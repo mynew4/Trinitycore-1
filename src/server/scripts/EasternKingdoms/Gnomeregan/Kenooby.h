@@ -1,0 +1,5 @@
+#ifndef DEF_RAZORFEN_KRAUL_H
+#define DEF_RAZORFEN_KRAUL_H
+
+#define EVENT_WARD_KEEPER 1
+#endif

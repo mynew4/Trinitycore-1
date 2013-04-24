@@ -1,0 +1,691 @@
+f7e7f5fe26cca68f51e9ad9869f057ebbe191d32
+ .../world/2013_01_01_01_world_creature_text.sql    |   30 ++++
+ src/server/game/Scripting/ScriptLoader.cpp         |    3 +
+ src/server/scripts/Outland/CMakeLists.txt          |    4 +
+ .../botanica/boss_commander_sarannis.cpp           |  138 ++++++++++++++++
+ .../botanica/boss_high_botanist_freywinn.cpp       |    6 +-
+ .../Outland/TempestKeep/botanica/boss_laj.cpp      |    6 +-
+ .../TempestKeep/botanica/boss_warp_splinter.cpp    |    6 +-
+ .../Outland/TempestKeep/botanica/the_botanica.cpp  |  164 ++++++++++++++++++++
+ .../Outland/TempestKeep/botanica/the_botanica.h    |   42 +++++
+ .../TempestKeep/botanica/thorngrin_the_tender.cpp  |  150 ++++++++++++++++++
+ 10 files changed, 540 insertions(+), 9 deletions(-)
+
+diff --git a/sql/updates/world/2013_01_01_01_world_creature_text.sql b/sql/updates/world/2013_01_01_01_world_creature_text.sql
+new file mode 100644
+index 0000000..9b7a0e2
+--- /dev/null
++++ b/sql/updates/world/2013_01_01_01_world_creature_text.sql
+@@ -0,0 +1,30 @@
++-- NPC talk text convert from creature_ai_text. Moving boss to cpp.
++UPDATE `creature_template` SET `AIName`= '', `ScriptName`= 'boss_commander_sarannis' WHERE entry`=17976;
++DELETE FROM `creature_ai_scripts` WHERE `creature_id`=17976;
++DELETE FROM `creature_ai_texts` WHERE `entry` BETWEEN -39 AND -34;
++DELETE FROM `creature_text` WHERE `entry` IN (17976);
++INSERT INTO `creature_text` (`entry`,`groupid`,`id`,`text`,`type`,`language`,`probability`,`emote`,`duration`,`sound`,`comment`) VALUES
++(17976,0,0, 'Step forward! I will see that you are properly welcomed.',14,0,100,0,0,11071, 'Commander Sarannis - On Aggro Say'),
++(17976,1,0, 'Oh stop your whimpering.',14,0,100,0,0,11072, 'Commander Sarannis - On Player Death Say'),
++(17976,1,1, 'Mission accomplished.',14,0,100,0,0,11073, 'Commander Sarannis - On Player Death Say'),
++(17976,2,0, 'You are no longer dealing with some underling.',14,0,100,0,0,11076, 'Commander Sarannis - On Cast Arcane Resonance Say'),
++(17976,3,0, 'Band''or shorel''aran!',14,0,100,0,0,11077, 'Commander Sarannis - On Cast Arcane Devastation Say'),
++(17976,4,0, '%s calls for reinforcements.',16,0,100,0,0,0, 'Commander Sarannis - On HP@50% Summon emote'),
++(17976,5,0, 'Guards! Come and kill these intruders!',14,0,100,0,0,11078, 'Commander Sarannis - On HP@50% Summon Say'),
++(17976,6,0, 'I have not yet... begun to...',14,0,100,0,0,11079, 'Commander Sarannis - On Death Say');
++
++-- NPC talk text convert from creature_ai_text. Moving boss to cpp.
++UPDATE `creature_template` SET `AIName`= '', `ScriptName`= 'thorngrin_the_tender' WHERE entry`=17978;
++DELETE FROM `creature_ai_scripts` WHERE `creature_id`=17978;
++DELETE FROM `creature_ai_texts` WHERE entry BETWEEN -16 AND -9;
++DELETE FROM `creature_text` WHERE `entry` IN (17978);
++INSERT INTO `creature_text` (`entry`,`groupid`,`id`,`text`,`type`,`language`,`probability`,`emote`,`duration`,`sound`,`comment`) VALUES
++(17978,0,0, 'What aggravation is this? You will die!',14,0,100,0,0,11205, 'Thorngrin the Tender - Aggro Say'),
++(17978,1,0, 'You seek a prize, eh? How about death?',14,0,100,0,0,11206, 'Thorngrin the Tender - 20% Health Say'),
++(17978,2,0, 'I hate to say I told you so...',14,0,100,0,0,11207, 'Thorngrin the Tender - Player Death Say'),
++(17978,3,0, 'Your life will be mine!',14,0,100,0,0,11208, 'Thorngrin the Tender - Cast Sacrifice Say'),
++(17978,4,0, 'I revel in your pain!',14,0,100,0,0,11209, 'Thorngrin the Tender - 50% Health Say'),
++(17978,5,0, 'I''ll incinerate you!',14,0,100,0,0,11210, 'Thorngrin the Tender - Cast Hellfire Say'),
++(17978,5,1, 'Scream while you burn!',14,0,100,0,0,11211, 'Thorngrin the Tender - Cast Hellfire Say'),
++(17978,6,0, 'You won''t... get far.',14,0,100,0,0,11212, 'Thorngrin the Tender - On Death Say'),
++(17978,7,0, '%s becomes enraged!',16,0,100,0,0,0, 'Thorngrin the Tender - On Enrage Say');
+diff --git a/src/server/game/Scripting/ScriptLoader.cpp b/src/server/game/Scripting/ScriptLoader.cpp
+index 31e3adb..540f194 100644
+--- a/src/server/game/Scripting/ScriptLoader.cpp
++++ b/src/server/game/Scripting/ScriptLoader.cpp
+@@ -579,6 +579,9 @@ void AddSC_instance_arcatraz();
+ void AddSC_boss_high_botanist_freywinn();    //TK Botanica
+ void AddSC_boss_laj();
+ void AddSC_boss_warp_splinter();
++void AddSC_boss_thorngrin_the_tender();
++void AddSC_boss_commander_sarannis();
++void AddSC_instance_the_botanica();
+ void AddSC_boss_alar();                      //TK The Eye
+ void AddSC_boss_kaelthas();
+ void AddSC_boss_void_reaver();
+diff --git a/src/server/scripts/Outland/CMakeLists.txt b/src/server/scripts/Outland/CMakeLists.txt
+index 9fb0d47..05f329b 100644
+--- a/src/server/scripts/Outland/CMakeLists.txt
++++ b/src/server/scripts/Outland/CMakeLists.txt
+@@ -59,6 +59,10 @@ set(scripts_STAT_SRCS
+   Outland/TempestKeep/Eye/boss_alar.cpp
+   Outland/TempestKeep/Eye/boss_kaelthas.cpp
+   Outland/TempestKeep/Eye/the_eye.cpp
++  Outland/TempestKeep/botanica/the_botanica.h
++  Outland/TempestKeep/botanica/the_botanica.cpp
++  Outland/TempestKeep/botanica/boss_commander_sarannis.cpp
++  Outland/TempestKeep/botanica/thorngrin_the_tender.cpp
+   Outland/TempestKeep/botanica/boss_high_botanist_freywinn.cpp
+   Outland/TempestKeep/botanica/boss_warp_splinter.cpp
+   Outland/TempestKeep/botanica/boss_laj.cpp
+diff --git a/src/server/scripts/Outland/TempestKeep/botanica/boss_commander_sarannis.cpp b/src/server/scripts/Outland/TempestKeep/botanica/boss_commander_sarannis.cpp
+new file mode 100644
+index 0000000..e19d670
+--- /dev/null
++++ b/src/server/scripts/Outland/TempestKeep/botanica/boss_commander_sarannis.cpp
+@@ -0,0 +1,138 @@
++/*
++ * Copyright (C) 2008-2013 TrinityCore <http://www.trinitycore.org/>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2 of the License, or (at your
++ * option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "ScriptMgr.h"
++#include "ScriptedCreature.h"
++
++enum Says
++{
++    SAY_AGGRO                   = 0,
++    SAY_KILL                    = 1,
++    SAY_ARCANE_RESONANCE        = 2,
++    SAY_ARCANE_DEVASTATION      = 3,
++    EMOTE_SUMMON                = 4,
++    SAY_SUMMON                  = 5,
++    SAY_DEATH                   = 6
++};
++
++enum Spells
++{
++    SPELL_ARCANE_RESONANCE      = 34794,
++    SPELL_ARCANE_DEVASTATION    = 34799,
++    SPELL_SUMMON_REINFORCEMENTS = 34803
++};
++
++enum
++{
++    EVENT_ARCANE_RESONANCE      = 1,
++    EVENT_ARCANE_DEVASTATION    = 2
++};
++
++class boss_commander_sarannis : public CreatureScript
++{
++    public: boss_commander_sarannis() : CreatureScript("boss_commander_sarannis") { }
++
++        struct boss_commander_sarannisAI : public ScriptedAI
++        {
++            boss_commander_sarannisAI(Creature* creature) : BossAI(creature, DATA_COMMANDER_SARANNIS) { }
++
++            void Reset()
++            {
++                _phase = true;
++            }
++
++            void EnterCombat(Unit* /*who*/)
++            {
++                Talk(SAY_AGGRO);
++                _events.Reset();
++                _events.ScheduleEvent(EVENT_ARCANE_RESONANCE, 42700);
++                _events.ScheduleEvent(EVENT_ARCANE_DEVASTATION, 15200);
++            }
++
++            void KilledUnit(Unit* /*victim*/)
++            {
++                Talk(SAY_KILL);
++            }
++
++            void JustDied(Unit* /*killer*/)
++            {
++                Talk(SAY_DEATH);
++            }
++
++            void DamageTaken(Unit* /*killer*/, uint32 &damage)
++            {
++                if (me->HealthBelowPctDamaged(50, damage) && _phase)
++                {
++                    _phase = false;
++                    Talk(EMOTE_SUMMON);
++                    Talk(SAY_SUMMON);
++                    DoCast(me, SPELL_SUMMON_REINFORCEMENTS);
++                }
++            }
++
++            void JustSummoned(Creature* summon)
++            {
++                ScriptedAI::JustSummoned(summon);
++            }
++
++            void UpdateAI(const uint32 diff)
++            {
++                if (!UpdateVictim())
++                    return;
++
++                _events.Update(diff);
++
++                if (me->HasUnitState(UNIT_STATE_CASTING))
++                    return;
++
++                while (uint32 eventId = _events.ExecuteEvent())
++                {
++                    switch (eventId)
++                    {
++                        case EVENT_ARCANE_RESONANCE:
++                            Talk(SAY_ARCANE_RESONANCE);
++                            DoCastVictim(SPELL_ARCANE_RESONANCE, true);
++                            _events.ScheduleEvent(EVENT_ARCANE_RESONANCE, 42700);
++                            break;
++                        case EVENT_ARCANE_DEVASTATION:
++                            Talk(SAY_ARCANE_DEVASTATION);
++                            DoCastVictim(SPELL_ARCANE_DEVASTATION, true);
++                            _events.ScheduleEvent(EVENT_ARCANE_DEVASTATION, urand(11000, 19200));
++                            break;
++                        default:
++                            break;
++                    }
++                }
++
++                DoMeleeAttackIfReady();
++            }
++
++        private:
++            EventMap _events;
++            bool _phase;
++        };
++
++        CreatureAI* GetAI(Creature* creature) const
++        {
++            return new boss_commander_sarannisAI(creature);
++        }
++};
++
++void AddSC_boss_commander_sarannis()
++{
++    new boss_commander_sarannis();
++}
+\ No newline at end of file
+diff --git a/src/server/scripts/Outland/TempestKeep/botanica/boss_high_botanist_freywinn.cpp b/src/server/scripts/Outland/TempestKeep/botanica/boss_high_botanist_freywinn.cpp
+index b3604d6..12e5acf 100644
+--- a/src/server/scripts/Outland/TempestKeep/botanica/boss_high_botanist_freywinn.cpp
++++ b/src/server/scripts/Outland/TempestKeep/botanica/boss_high_botanist_freywinn.cpp
+@@ -33,7 +33,7 @@ enum eSays
+     SAY_TREE                   = 2,
+     SAY_SUMMON                 = 3,
+     SAY_DEATH                  = 4,
+-    SAY_OOC_RANDOM             = 5,
++    SAY_OOC_RANDOM             = 5
+ };
+ 
+ enum eSpells
+@@ -44,7 +44,7 @@ enum eSpells
+     SPELL_PLANT_WHITE          = 34759,
+     SPELL_PLANT_GREEN          = 34761,
+     SPELL_PLANT_BLUE           = 34762,
+-    SPELL_PLANT_RED            = 34763,
++    SPELL_PLANT_RED            = 34763
+ };
+ 
+ #define ENTRY_FRAYER                19953
+@@ -60,7 +60,7 @@ class boss_high_botanist_freywinn : public CreatureScript
+ 
+         struct boss_high_botanist_freywinnAI : public ScriptedAI
+         {
+-            boss_high_botanist_freywinnAI(Creature* creature) : ScriptedAI(creature) {}
++            boss_high_botanist_freywinnAI(Creature* creature) : BossAI(creature, DATA_HIGH_BOTANIST_FREYWINN) { }
+ 
+             std::list<uint64> Adds_List;
+ 
+diff --git a/src/server/scripts/Outland/TempestKeep/botanica/boss_laj.cpp b/src/server/scripts/Outland/TempestKeep/botanica/boss_laj.cpp
+index b1a894d..58f5d7a 100644
+--- a/src/server/scripts/Outland/TempestKeep/botanica/boss_laj.cpp
++++ b/src/server/scripts/Outland/TempestKeep/botanica/boss_laj.cpp
+@@ -38,7 +38,7 @@ enum eSpells
+     SPELL_SUMMON_LASHER_3      = 34686,
+     SPELL_SUMMON_FLAYER_4      = 34687,
+     SPELL_SUMMON_LASHER_4      = 34688,
+-    SPELL_SUMMON_FLAYER_3      = 34690,
++    SPELL_SUMMON_FLAYER_3      = 34690
+ };
+ enum eOthers
+ {
+@@ -47,7 +47,7 @@ enum eOthers
+     MODEL_ARCANE               = 14213,
+     MODEL_FIRE                 = 13110,
+     MODEL_FROST                = 14112,
+-    MODEL_NATURE               = 14214,
++    MODEL_NATURE               = 14214
+ };
+ 
+ class boss_laj : public CreatureScript
+@@ -61,7 +61,7 @@ class boss_laj : public CreatureScript
+ 
+         struct boss_lajAI : public ScriptedAI
+         {
+-            boss_lajAI(Creature* creature) : ScriptedAI(creature) {}
++            boss_lajAI(Creature* creature) : BossAI(creature, DATA_LAJ) { }
+ 
+             bool CanSummon;
+             uint32 Teleport_Timer;
+diff --git a/src/server/scripts/Outland/TempestKeep/botanica/boss_warp_splinter.cpp b/src/server/scripts/Outland/TempestKeep/botanica/boss_warp_splinter.cpp
+index 2ca1bb2..131c0fc 100644
+--- a/src/server/scripts/Outland/TempestKeep/botanica/boss_warp_splinter.cpp
++++ b/src/server/scripts/Outland/TempestKeep/botanica/boss_warp_splinter.cpp
+@@ -40,13 +40,13 @@ enum eSpells
+     SUMMON_TREANTS     = 34727, // DBC: 34727, 34731, 34733, 34734, 34736, 34739, 34741 (with Ancestral Life spell 34742)   // won't work (guardian summon)
+     ARCANE_VOLLEY      = 36705,
+     ARCANE_VOLLEY_H    = 39133,
+-    SPELL_HEAL_FATHER  = 6262,
++    SPELL_HEAL_FATHER  = 6262
+ };
+ 
+ enum eOthers
+ {
+     CREATURE_TREANT    = 19949,
+-    TREANT_SPAWN_DIST  = 50, //50 yards from Warp Splinter's spawn point
++    TREANT_SPAWN_DIST  = 50 //50 yards from Warp Splinter's spawn point
+ };
+ 
+ float treant_pos[6][3] =
+@@ -136,7 +136,7 @@ class boss_warp_splinter : public CreatureScript
+         }
+         struct boss_warp_splinterAI : public ScriptedAI
+         {
+-            boss_warp_splinterAI(Creature* creature) : ScriptedAI(creature)
++            boss_warp_splinterAI(Creature* creature) : BossAI(creature, DATA_WARP_SPLINTER) { }
+             {
+                 Treant_Spawn_Pos_X = creature->GetPositionX();
+                 Treant_Spawn_Pos_Y = creature->GetPositionY();
+diff --git a/src/server/scripts/Outland/TempestKeep/botanica/the_botanica.cpp b/src/server/scripts/Outland/TempestKeep/botanica/the_botanica.cpp
+new file mode 100644
+index 0000000..4fc4463
+--- /dev/null
++++ b/src/server/scripts/Outland/TempestKeep/botanica/the_botanica.cpp
+@@ -0,0 +1,164 @@
++/*
++ * Copyright (C) 2008-2013 TrinityCore <http://www.trinitycore.org/>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2 of the License, or (at your
++ * option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "ScriptMgr.h"
++#include "InstanceScript.h"
++#include "the_botanica.h"
++
++class instance_the_botanica : public InstanceMapScript
++{
++    public:
++        instance_the_botanica() : InstanceMapScript("instance_the_botanica", 553) { }
++
++        struct instance_the_botanica_InstanceMapScript : public InstanceScript
++        {
++            instance_the_botanica_InstanceMapScript(Map* map) : InstanceScript(map)
++            {
++                CommanderSarannisGUID       = 0;
++                HighBotanistFreywinnGUID    = 0;
++                ThorngrinTheTenderGUID      = 0;
++                LajGUID                     = 0;
++                WarpSplinterGUID            = 0;
++            }
++
++            void OnCreatureCreate(Creature* creature)
++            {
++                switch (creature->GetEntry())
++                {
++                    case NPC_COMMANDER_SARANNIS:
++                        CommanderSarannisGUID = creature->GetGUID();
++                        break;
++                    case NPC_HIGH_BOTANIST_FREYWINN:
++                        HighBotanistFreywinnGUID = creature->GetGUID();
++                        break;
++                    case NPC_THORNGRIN_THE_TENDER:
++                        ThorngrinTheTenderGUID = creature->GetGUID();
++                        break;
++                    case NPC_LAJ:
++                        LajGUID = creature->GetGUID();
++                        break;
++                    case NPC_WARP_SPLINTER:
++                        WarpSplinterGUID = creature->GetGUID();
++                        break;
++                    default:
++                        break;
++                }
++            }
++
++            uint64 GetData64(uint32 type) const
++            {
++                switch (type)
++                {
++                    case DATA_COMMANDER_SARANNIS:
++                        return CommanderSarannisGUID;
++                    case DATA_HIGH_BOTANIST_FREYWINN:
++                        return HighBotanistFreywinnGUID;
++                    case DATA_THORNGRIN_THE_TENDER:
++                        return ThorngrinTheTenderGUID;
++                    case DATA_LAJ:
++                        return LajGUID;
++                    case DATA_WARP_SPLINTER:
++                        return WarpSplinterGUID;
++                    default:
++                        break;
++                }
++
++                return 0;
++            }
++
++            bool SetBossState(uint32 type, EncounterState state)
++            {
++                if (!InstanceScript::SetBossState(type, state))
++                    return false;
++
++                switch (type)
++                {
++                    case DATA_COMMANDER_SARANNIS:
++                    case DATA_HIGH_BOTANIST_FREYWINN:
++                    case DATA_THORNGRIN_THE_TENDER:
++                    case DATA_LAJ:
++                    case DATA_WARP_SPLINTER:
++                        break;
++                    default:
++                        break;
++                }
++
++                return true;
++            }
++
++            std::string GetSaveData()
++            {
++                OUT_SAVE_INST_DATA;
++
++                std::ostringstream saveStream;
++                saveStream << "B O " << GetBossSaveData();
++
++                OUT_SAVE_INST_DATA_COMPLETE;
++                return saveStream.str();
++            }
++
++            void Load(char const* str)
++            {
++                if (!str)
++                {
++                    OUT_LOAD_INST_DATA_FAIL;
++                    return;
++                }
++
++                OUT_LOAD_INST_DATA(str);
++
++                char dataHead1, dataHead2;
++
++                std::istringstream loadStream(str);
++                loadStream >> dataHead1 >> dataHead2;
++
++                if (dataHead1 == 'B' && dataHead2 == 'O')
++                {
++                    for (uint8 i = 0; i < EncounterCount; ++i)
++                    {
++                        uint32 tmpState;
++                        loadStream >> tmpState;
++                        if (tmpState == IN_PROGRESS || tmpState > SPECIAL)
++                            tmpState = NOT_STARTED;
++
++                        SetBossState(i, EncounterState(tmpState));
++                    }
++                }
++                else
++                    OUT_LOAD_INST_DATA_FAIL;
++
++                OUT_LOAD_INST_DATA_COMPLETE;
++            }
++
++        protected:
++            uint64 CommanderSarannisGUID;
++            uint64 HighBotanistFreywinnGUID;
++            uint64 ThorngrinTheTenderGUID;
++            uint64 LajGUID;
++            uint64 WarpSplinterGUID;
++        };
++
++        InstanceScript* GetInstanceScript(InstanceMap* map) const
++        {
++            return new instance_the_botanica_InstanceMapScript(map);
++        }
++};
++
++void AddSC_instance_the_botanica()
++{
++    new instance_the_botanica;
++}
+\ No newline at end of file
+diff --git a/src/server/scripts/Outland/TempestKeep/botanica/the_botanica.h b/src/server/scripts/Outland/TempestKeep/botanica/the_botanica.h
+new file mode 100644
+index 0000000..e9a7f53
+--- /dev/null
++++ b/src/server/scripts/Outland/TempestKeep/botanica/the_botanica.h
+@@ -0,0 +1,42 @@
++/*
++ * Copyright (C) 2008-2013 TrinityCore <http://www.trinitycore.org/>
++ * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2 of the License, or (at your
++ * option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef DEF_THE_BOTANICA_H
++#define DEF_THE_BOTANICA_H
++
++uint32 const EncounterCount = 5;
++
++enum DataTypes
++{
++    DATA_COMMANDER_SARANNIS             = 1,
++    DATA_HIGH_BOTANIST_FREYWINN         = 2,
++    DATA_THORNGRIN_THE_TENDER           = 3,
++    DATA_LAJ                            = 4,
++    DATA_WARP_SPLINTER                  = 5
++};
++
++enum CreatureIds
++{
++    NPC_COMMANDER_SARANNIS              = 17976,
++    NPC_HIGH_BOTANIST_FREYWINN          = 17975,
++    NPC_THORNGRIN_THE_TENDER            = 17978,
++    NPC_LAJ                             = 17980,
++    NPC_WARP_SPLINTER                   = 17977
++};
++
++#endif
+\ No newline at end of file
+diff --git a/src/server/scripts/Outland/TempestKeep/botanica/thorngrin_the_tender.cpp b/src/server/scripts/Outland/TempestKeep/botanica/thorngrin_the_tender.cpp
+new file mode 100644
+index 0000000..eb1150d
+--- /dev/null
++++ b/src/server/scripts/Outland/TempestKeep/botanica/thorngrin_the_tender.cpp
+@@ -0,0 +1,150 @@
++/*
++ * Copyright (C) 2008-2013 TrinityCore <http://www.trinitycore.org/>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2 of the License, or (at your
++ * option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include "ScriptMgr.h"
++#include "ScriptedCreature.h"
++
++enum Says
++{
++    SAY_AGGRO                   = 0,
++    SAY_20_PERCENT_HP           = 1,
++    SAY_KILL                    = 2,
++    SAY_CAST_SACRIFICE          = 3,
++    SAY_50_PERCENT_HP           = 4,
++    SAY_CAST_HELLFIRE           = 5,
++    SAY_DEATH                   = 6,
++    EMOTE_ENRAGE                = 7
++};
++
++enum Spells
++{
++    SPELL_SACRIFICE             = 34661,
++    SPELL_HELLFIRE_NORMAL       = 34659,
++    SPELL_HELLFIRE_HEROIC       = 39131,
++    SPELL_ENRAGE                = 34670
++};
++
++enum Events
++{
++    EVENT_SACRIFICE             = 1,
++    EVENT_HELLFIRE              = 2,
++    EVENT_ENRAGE                = 3
++};
++
++class boss_thorngrin_the_tender : public CreatureScript
++{
++    public: boss_thorngrin_the_tender() : CreatureScript("thorngrin_the_tender") { }
++
++        struct boss_thorngrin_the_tenderAI : public BossAI
++        {
++            boss_thorngrin_the_tenderAI(Creature* creature) : BossAI(creature, DATA_THORNGRIN_THE_TENDER) { }
++
++            void Reset()
++            {
++                _phase1 = true;
++                _phase2 = true;
++            }
++
++            void EnterCombat(Unit* /*who*/)
++            {
++                Talk(SAY_AGGRO);
++                _events.Reset();
++                _events.ScheduleEvent(EVENT_SACRIFICE, 5700);
++                _events.ScheduleEvent(EVENT_HELLFIRE, IsHeroic() ? urand(17400, 19300) : 18000);
++                _events.ScheduleEvent(EVENT_ENRAGE, 12000);
++            }
++
++            void KilledUnit(Unit* /*victim*/)
++            {
++                Talk(SAY_KILL);
++            }
++
++            void JustDied(Unit* /*killer*/)
++            {
++                Talk(SAY_DEATH);
++            }
++
++            void DamageTaken(Unit* /*killer*/, uint32 &damage)
++            {
++                if (me->HealthBelowPctDamaged(50, damage) && _phase1)
++                {
++                    _phase1 = false;
++                    Talk(SAY_50_PERCENT_HP);
++                }
++                if (me->HealthBelowPctDamaged(20, damage) && _phase2)
++                {
++                    _phase2 = false;
++                    Talk(SAY_20_PERCENT_HP);
++                }
++            }
++
++            void UpdateAI(uint32 const diff)
++            {
++                if (!UpdateVictim())
++                    return;
++
++                _events.Update(diff);
++
++                if (me->HasUnitState(UNIT_STATE_CASTING))
++                    return;
++
++                while (uint32 eventId = _events.ExecuteEvent())
++                {
++                    switch (eventId)
++                    {
++                        case EVENT_SACRIFICE:
++                            if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 1, 0.0f, true))
++                            {
++                                Talk(SAY_CAST_SACRIFICE);
++                                DoCast(target, SPELL_SACRIFICE, true);
++                            }
++                            _events.ScheduleEvent(EVENT_SACRIFICE, 29400);
++                            break;
++                        case EVENT_HELLFIRE:
++                            Talk(SAY_CAST_HELLFIRE);
++                            DoCastVictim(DUNGEON_MODE(SPELL_HELLFIRE_NORMAL, SPELL_HELLFIRE_HEROIC), true);
++                            _events.ScheduleEvent(EVENT_HELLFIRE, IsHeroic() ? urand(17400, 19300) : 18000);
++                            break;
++                        case EVENT_ENRAGE:
++                            Talk(EMOTE_ENRAGE);
++                            DoCast(me, SPELL_ENRAGE);
++                            _events.ScheduleEvent(EVENT_ENRAGE, 33000);
++                            break;
++                        default:
++                            break;
++                    }
++                }
++
++                DoMeleeAttackIfReady();
++            }
++
++        private:
++            EventMap _events;
++            bool _phase1;
++            bool _phase2;
++        };
++
++        CreatureAI* GetAI(Creature* creature) const
++        {
++            return new boss_thorngrin_the_tenderAI(creature);
++        }
++};
++
++void AddSC_boss_thorngrin_the_tender()
++{
++    new boss_thorngrin_the_tender();
++}
+\ No newline at end of file
